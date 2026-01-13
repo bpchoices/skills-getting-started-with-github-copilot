@@ -20,11 +20,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        // Participants list HTML
+        let participantsHTML = "";
+        if (details.participants.length > 0) {
+          participantsHTML = `
+            <div class="participants-section">
+              <strong>Participants:</strong>
+              <ul class="participants-list">
+                ${details.participants.map(email => `<li>${email}</li>`).join("")}
+              </ul>
+            </div>
+          `;
+        } else {
+          participantsHTML = `
+            <div class="participants-section">
+              <strong>Participants:</strong>
+              <span class="no-participants">No participants yet</span>
+            </div>
+          `;
+        }
+
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          ${participantsHTML}
         `;
 
         activitiesList.appendChild(activityCard);
@@ -62,6 +83,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh activities to show new participant
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
@@ -83,4 +106,53 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize app
   fetchActivities();
+  
+    function updateParticipantsList(participants) {
+      const participantsList = document.getElementById('participants-list');
+      participantsList.innerHTML = '';
+      participants.forEach(participant => {
+        const li = document.createElement('li');
+        li.style.listStyleType = 'none'; // Hide bullet points
+        li.style.display = 'flex';
+        li.style.alignItems = 'center';
+  
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = participant;
+        nameSpan.style.flexGrow = '1';
+  
+        const deleteBtn = document.createElement('button');
+        deleteBtn.innerHTML = '🗑️';
+        deleteBtn.title = 'Unregister';
+        deleteBtn.style.marginLeft = '8px';
+        deleteBtn.style.background = 'none';
+        deleteBtn.style.border = 'none';
+        deleteBtn.style.cursor = 'pointer';
+        deleteBtn.onclick = function() {
+          unregisterParticipant(participant);
+        };
+  
+        li.appendChild(nameSpan);
+        li.appendChild(deleteBtn);
+        participantsList.appendChild(li);
+      });
+    }
+  
+    function unregisterParticipant(participant) {
+      fetch('/unregister', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ participant })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          updateParticipantsList(data.participants);
+        } else {
+          alert('Failed to unregister participant.');
+        }
+      })
+      .catch(() => alert('Error contacting server.'));
+    }
 });
